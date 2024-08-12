@@ -4,19 +4,34 @@ alphabet_in:
 - NO_MAJORITY
 - ROUND_TIMEOUT
 - TRANSACT
+- IPFS_STORE_HASH  # New event for IPFS storage
+- MULTISEND  # New event for multisend transactions
+- CONTRACT_INTERACTION  # New event for custom contract interaction
+
 default_start_state: APICheckRound
+
 final_states:
 - FinishedDecisionMakingRound
 - FinishedTxPreparationRound
-label: LearningAbciApp
+- FinishedIPFSStorageRound  # New final state for IPFS storage
+- FinishedMultisendRound  # New final state for multisend transactions
+- FinishedContractInteractionRound  # New final state for custom contract interaction
+
+label: VotingAbciApp
+
 start_states:
 - APICheckRound
+
 states:
 - APICheckRound
 - DecisionMakingRound
 - FinishedDecisionMakingRound
 - FinishedTxPreparationRound
 - TxPreparationRound
+- IPFSStorageRound  # New state for IPFS storage
+- MultisendRound  # New state for multisend transactions
+- ContractInteractionRound  # New state for custom contract interaction
+
 transition_func:
     (APICheckRound, DONE): DecisionMakingRound
     (APICheckRound, NO_MAJORITY): APICheckRound
@@ -26,6 +41,18 @@ transition_func:
     (DecisionMakingRound, NO_MAJORITY): DecisionMakingRound
     (DecisionMakingRound, ROUND_TIMEOUT): DecisionMakingRound
     (DecisionMakingRound, TRANSACT): TxPreparationRound
+    (DecisionMakingRound, IPFS_STORE_HASH): IPFSStorageRound  # Transition to IPFS storage
+    (DecisionMakingRound, MULTISEND): MultisendRound  # Transition to multisend
+    (DecisionMakingRound, CONTRACT_INTERACTION): ContractInteractionRound  # Transition to contract interaction
     (TxPreparationRound, DONE): FinishedTxPreparationRound
     (TxPreparationRound, NO_MAJORITY): TxPreparationRound
     (TxPreparationRound, ROUND_TIMEOUT): TxPreparationRound
+    (IPFSStorageRound, DONE): FinishedIPFSStorageRound  # Transition for IPFS storage
+    (IPFSStorageRound, NO_MAJORITY): IPFSStorageRound
+    (IPFSStorageRound, ROUND_TIMEOUT): IPFSStorageRound
+    (MultisendRound, DONE): FinishedMultisendRound  # Transition for multisend
+    (MultisendRound, NO_MAJORITY): MultisendRound
+    (MultisendRound, ROUND_TIMEOUT): MultisendRound
+    (ContractInteractionRound, DONE): FinishedContractInteractionRound  # Transition for contract interaction
+    (ContractInteractionRound, NO_MAJORITY): ContractInteractionRound
+    (ContractInteractionRound, ROUND_TIMEOUT): ContractInteractionRound

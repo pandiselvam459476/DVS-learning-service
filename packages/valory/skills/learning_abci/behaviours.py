@@ -17,7 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This package contains round behaviours of LearningAbciApp."""
+"""This package contains round behaviours of VotingAbciApp."""
 
 from abc import ABC
 from typing import Generator, Set, Type, cast
@@ -32,14 +32,18 @@ from packages.valory.skills.learning_abci.payloads import (
     APICheckPayload,
     DecisionMakingPayload,
     TxPreparationPayload,
+    IPFSStoragePayload,
+    MultisendTxPayload,
 )
 from packages.valory.skills.learning_abci.rounds import (
     APICheckRound,
     DecisionMakingRound,
     Event,
-    LearningAbciApp,
+    learningAbciApp,
     SynchronizedData,
     TxPreparationRound,
+    IPFSStoreRound,
+    MultisendTxRound,
 )
 
 
@@ -51,8 +55,8 @@ VALUE_KEY = "value"
 TO_ADDRESS_KEY = "to_address"
 
 
-class LearningBaseBehaviour(BaseBehaviour, ABC):  # pylint: disable=too-many-ancestors
-    """Base behaviour for the learning_abci skill."""
+class VotingBaseBehaviour(BaseBehaviour, ABC):
+    """Base behaviour for the voting_abci skill."""
 
     @property
     def synchronized_data(self) -> SynchronizedData:
@@ -70,14 +74,13 @@ class LearningBaseBehaviour(BaseBehaviour, ABC):  # pylint: disable=too-many-anc
         return cast(SharedState, self.context.state)
 
 
-class APICheckBehaviour(LearningBaseBehaviour):  # pylint: disable=too-many-ancestors
+class APICheckBehaviour(VotingBaseBehaviour):
     """APICheckBehaviour"""
 
     matching_round: Type[AbstractRound] = APICheckRound
 
     def async_act(self) -> Generator:
         """Do the act, supporting asynchronous execution."""
-
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             sender = self.context.agent_address
             price = yield from self.get_price()
@@ -91,23 +94,19 @@ class APICheckBehaviour(LearningBaseBehaviour):  # pylint: disable=too-many-ance
 
     def get_price(self):
         """Get token price from Coingecko"""
-        # result = yield from self.get_http_response("coingecko.com")
         yield
         price = 1.0
         self.context.logger.info(f"Price is {price}")
         return price
 
 
-class DecisionMakingBehaviour(
-    LearningBaseBehaviour
-):  # pylint: disable=too-many-ancestors
+class DecisionMakingBehaviour(VotingBaseBehaviour):
     """DecisionMakingBehaviour"""
 
     matching_round: Type[AbstractRound] = DecisionMakingRound
 
     def async_act(self) -> Generator:
         """Do the act, supporting asynchronous execution."""
-
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             sender = self.context.agent_address
             event = self.get_event()
@@ -121,28 +120,22 @@ class DecisionMakingBehaviour(
 
     def get_event(self):
         """Get the next event"""
-        # Using the token price from the previous round, decide whether we should make a transfer or not
         event = Event.DONE.value
         self.context.logger.info(f"Event is {event}")
         return event
 
 
-class TxPreparationBehaviour(
-    LearningBaseBehaviour
-):  # pylint: disable=too-many-ancestors
+class TxPreparationBehaviour(VotingBaseBehaviour):
     """TxPreparationBehaviour"""
 
     matching_round: Type[AbstractRound] = TxPreparationRound
 
     def async_act(self) -> Generator:
         """Do the act, supporting asynchronous execution."""
-
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             sender = self.context.agent_address
             tx_hash = yield from self.get_tx_hash()
-            payload = TxPreparationPayload(
-                sender=sender, tx_submitter=None, tx_hash=tx_hash
-            )
+            payload = TxPreparationPayload(sender=sender, tx_submitter=None, tx_hash=tx_hash)
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
             yield from self.send_a2a_transaction(payload)
@@ -152,20 +145,73 @@ class TxPreparationBehaviour(
 
     def get_tx_hash(self):
         """Get the tx hash"""
-        # We need to prepare a 1 wei transfer from the safe to another (configurable) account.
         yield
         tx_hash = None
         self.context.logger.info(f"Transaction hash is {tx_hash}")
         return tx_hash
 
 
-class LearningRoundBehaviour(AbstractRoundBehaviour):
-    """LearningRoundBehaviour"""
+class IPFSStorageBehaviour(VotingBaseBehaviour):
+    """IPFSStorageBehaviour"""
+
+    matching_round: Type[AbstractRound] = IPFSStorageRound
+
+    def async_act(self) -> Generator:
+        """Do the act, supporting asynchronous execution."""
+        with self.context.benchmark_tool.measure(self.behaviour_id).local():
+            sender = self.context.agent_address
+            data_hash = yield from self.store_data_on_ipfs()
+            payload = IPFSStoragePayload(sender=sender, data_hash=data_hash)
+
+        with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
+            yield from self.send_a2a_transaction(payload)
+            yield from self.wait_until_round_end()
+
+        self.set_done()
+
+    def store_data_on_ipfs(self):
+        """Store voting data on IPFS and return the hash."""
+        yield
+        data_hash = "Qm..."  # Simulate storing data on IPFS and getting the hash
+        self.context.logger.info(f"Data stored on IPFS with hash: {data_hash}")
+        return data_hash
+
+
+class MultisendTxPreparationBehaviour(VotingBaseBehaviour):
+    """MultisendTxPreparationBehaviour"""
+
+    matching_round: Type[AbstractRound] = MultisendTxPreparationRound
+
+    def async_act(self) -> Generator:
+        """Do the act, supporting asynchronous execution."""
+        with self.context.benchmark_tool.measure(self.behaviour_id).local():
+            sender = self.context.agent_address
+            tx_hash = yield from self.prepare_multisend_tx()
+            payload = MultisendTxPayload(sender=sender, tx_hash=tx_hash)
+
+        with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
+            yield from self.send_a2a_transaction(payload)
+            yield from self.wait_until_round_end()
+
+        self.set_done()
+
+    def prepare_multisend_tx(self):
+        """Prepare and return a multisend transaction hash."""
+        yield
+        tx_hash = "0xMultiSendTxHash"  # Simulate multisend transaction preparation
+        self.context.logger.info(f"Multisend transaction prepared with hash: {tx_hash}")
+        return tx_hash
+
+
+class VotingRoundBehaviour(AbstractRoundBehaviour):
+    """VotingRoundBehaviour"""
 
     initial_behaviour_cls = APICheckBehaviour
-    abci_app_cls = LearningAbciApp  # type: ignore
-    behaviours: Set[Type[BaseBehaviour]] = [  # type: ignore
+    abci_app_cls = VotingAbciApp  # type: ignore
+    behaviours: Set[Type[BaseBehaviour]] = {
         APICheckBehaviour,
         DecisionMakingBehaviour,
         TxPreparationBehaviour,
-    ]
+        IPFSStorageBehaviour,
+        MultisendTxPreparationBehaviour,
+    }

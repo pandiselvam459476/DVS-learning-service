@@ -17,7 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the shared state for the abci skill of LearningAbciApp."""
+"""This module contains the shared state for the abci skill of VotingAbciApp."""
 
 from typing import Any
 
@@ -29,13 +29,13 @@ from packages.valory.skills.abstract_round_abci.models import Requests as BaseRe
 from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
 )
-from packages.valory.skills.learning_abci.rounds import LearningAbciApp
+from packages.valory.skills.learning_abci.rounds import VotingAbciApp
 
 
 class SharedState(BaseSharedState):
     """Keep the current shared state of the skill."""
 
-    abci_app_cls = LearningAbciApp
+    abci_app_cls = VotingAbciApp
 
 
 Requests = BaseRequests
@@ -54,4 +54,20 @@ class Params(BaseParams):
         self.transfer_target_address = self._ensure(
             "transfer_target_address", kwargs, str
         )
+
+        # New parameters for IPFS storage
+        self.ipfs_api_endpoint = self._ensure("ipfs_api_endpoint", kwargs, str)
+        self.ipfs_timeout = self._ensure("ipfs_timeout", kwargs, int, default=60)
+
+        # New parameters for Multisend transactions
+        self.multisend_contract_address = self._ensure(
+            "multisend_contract_address", kwargs, str
+        )
+        self.multisend_gas_limit = self._ensure(
+            "multisend_gas_limit", kwargs, int, default=300000
+        )
+
+        # Custom contract parameters (if needed)
+        self.custom_contract_address = kwargs.get("custom_contract_address", None)
+
         super().__init__(*args, **kwargs)

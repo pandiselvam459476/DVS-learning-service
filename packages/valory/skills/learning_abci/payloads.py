@@ -17,7 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the transaction payloads of the LearningAbciApp."""
+"""This module contains the transaction payloads of the VotingAbciApp."""
 
 from dataclasses import dataclass
 from typing import Optional
@@ -45,3 +45,29 @@ class TxPreparationPayload(BaseTxPayload):
 
     tx_submitter: Optional[str] = None
     tx_hash: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class IPFSPayload(BaseTxPayload):
+    """Represent a transaction payload for storing/retrieving data from IPFS."""
+
+    ipfs_hash: Optional[str] = None
+    data: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class MultisendTxPayload(BaseTxPayload):
+    """Represent a transaction payload for preparing a multisend transaction."""
+
+    tx_submitter: Optional[str] = None
+    multisend_tx_hash: Optional[str] = None
+    transactions: Optional[str] = None  # JSON string or similar representation of the transactions
+
+
+@dataclass(frozen=True)
+class CustomContractPayload(BaseTxPayload):
+    """Represent a transaction payload for interacting with a custom contract."""
+
+    contract_address: str
+    function_name: str
+    function_args: str  # Arguments can be serialized to a string or use a more appropriate data structure
